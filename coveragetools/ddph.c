@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <string>
+using namespace std;
 #include "pin.H"
 
 typedef char CHAR;
@@ -516,8 +518,6 @@ void DppInstructionExecutionHandler(THREADID tid, ADDRINT insAddr, USIZE bsize, 
 
     pTlsCtx = TLSCTX();
 
-    DASSERT(pTlsCtx->Tid == tid);
-
     if (!pTlsCtx)
     {
         DLOG("NON TLS");
@@ -529,6 +529,7 @@ void DppInstructionExecutionHandler(THREADID tid, ADDRINT insAddr, USIZE bsize, 
     }
     else
     {
+        DASSERT(pTlsCtx->Tid == tid);
         pRange = pTlsCtx->TraceRange;
     }
 

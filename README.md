@@ -18,7 +18,7 @@ Dragon Dance also supports its own scripting system.
 
 ![](https://user-images.githubusercontent.com/437161/57895545-d81ee480-7854-11e9-8713-b18036ff0b80.gif)
 
-It lets you flexible way to play with the coverage data. You can load, delete, show, intersect, diff, distinct, sum operation on them. Following section will be contained the scripting system and api.
+It lets you flexible way to play with the coverage data. You can load, delete, show, intersect, diff, distinct, sum operation on them. Following section will be contained the scripting system and api. Press Alt + Enter keys to execute the script.
 
 #### Built-in Functions
 
@@ -100,7 +100,7 @@ The following API documentations and their behaviors may change until reached fi
 | Return Value            | None                                                         |
 | Minimum Parameter Count | 1                                                            |
 | Maximum Parameter Count | 1                                                            |
-| Description             | Sets the current working directory to given path. All import calls without absolute path after this, coverage files will be searched in the active working directory. |
+| Description             | Sets the current working directory with the given path. All import calls without absolute path after the **cwd** the coverage files will be searched in the active working directory. |
 | Aliases                 | None                                                         |
 
 
@@ -150,8 +150,6 @@ The following API documentations and their behaviors may change until reached fi
 | Maximum Parameter Count | 1                                                            |
 | Description             | Locates the current address selection by given offset. Real address value calculated by adding the offset value to the image base value. |
 | Aliases                 | None                                                         |
-
-***Note***: *This built-in does not perform any boundary check for now. I have to implement strict boundary check for each executable sections. If you give a value that out of valid boundary, you may experience undefined behavior.*
 
 
 
@@ -209,6 +207,42 @@ Dragon Dance can try to fix a misanalysed situation in ghidra during import the 
 
 In the future versions of the plugin, it may contains more fixups or workarounds for the image.
 
+### Installation
+
+Installation is quite easy.
+
+Start Ghidra.
+
+Click "File" menu and then select "Install Extensions.."
+
+Click the Green Plus icon from the Top-Right of the window
+
+Select plugin zip package and select Ok.
+
+Select dragondance from the list
+
+Click Ok and restart the ghidra
+
+### Launching DragonDance
+
+During the first loading of a binary to the Ghidra after the plugin installation, Ghidra should ask you whether you want to configure the newly installed plugin or not.
+
+If you click the Yes button, DragonDance plugin should appear immediately. 
+
+If you click the No button you have to activate manually yourself.
+
+In order to active manually,
+
+
+Click "File" menu and then select Configure from the Disassembly Window (CodeBrowser)
+
+Click the little plug icon from the top right corner of the Configure Tool window.
+
+Find the DragonDance item from the plugin list and enable it's checkbox then click Ok
+
+Dragon Dance window should be appeared.
+
+After the activation you should able to see Dragon Dance item in the Window menu.
 
 
 ### Collecting Coverage Data
@@ -226,6 +260,15 @@ The output will be placed into given directory as *drcov.[EXECUTABLE_NAME].[ID].
 **Using Intel Pin**
 
 As I mention before, Intel Pin does not provide any built-in coverage collector module. You have to use a custom pin module. Fortunally I crafted my own to collect coverage from the Pin. So that brings a few advantage to us. I can extend it when needed or add extra features, options in it. 
+
+While later versions may work, only Intel PIN 3.7 is supported. These are not immediately offered on the Intel PIN page, so here are direct download links:
+
+https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.7-97619-g0d0c92f4f-gcc-linux.tar.gz
+
+https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.7-97619-g0d0c92f4f-msvc-windows.zip
+
+https://software.intel.com/sites/landingpage/pintool/downloads/pin-3.7-97619-g0d0c92f4f-clang-mac.tar.gz
+
 
 You can access **ddph**'s source [here](https://github.com/0ffffffffh/dragondance/tree/master/coveragetools). I will share binaries for Windows, macOS and Linux. Or you can build your very own binary using it's build shell script.
 
@@ -267,7 +310,47 @@ type `csrutil status` again to make sure it is disabled or not. Then restart the
 
 ![](https://user-images.githubusercontent.com/437161/57895623-3f3c9900-7855-11e9-8b21-cc0d03adb3d7.gif)
 
+#### Build instructions
 
+First, download ghidra (latest version, currently 9.1.2) and dragondance
+```
+$ wget https://ghidra-sre.org/ghidra_9.1.2_PUBLIC_20200212.zip
+$ wget https://github.com/0ffffffffh/dragondance/archive/master.zip
+$ unzip ghidra_9.1.2_PUBLIC_20200212.zip
+$ unzip master.zip
+```
+ Next install gradle and jdk
+```
+$ sudo apt install openjdk-11-jdk
+$ wget https://services.gradle.org/distributions/gradle-5.2.1-bin.zip
+$ sudo unzip -d /opt/gradle gradle-5.2.1-bin.zip
+```
+create new profile file
+```
+$ sudo vi /etc/profile.d/gradle.sh
+```
+and add the following to add gradle to the PATH in every subsequent login.
+```
+export GRADLE_HOME=/opt/gradle/gradle-5.2.1
+export PATH=${GRADLE_HOME}/bin:${PATH}
+```
+to do it immediately, without having to logout
+```
+$ source /etc/profile.d/gradle.sh
+```
+we can now proceed to build dragondance
+```
+$ cd dragondance-master/
+$ gradle -PGHIDRA_INSTALL_DIR=/home/ubuntu/ghidra_9.1.2_PUBLIC
+> Task :buildExtension
+
+Created ghidra_9.1.2_PUBLIC_20200506_dragondance-master.zip in /home/ubuntu/dragondance-master/dist
+
+BUILD SUCCESSFUL in 29s
+5 actionable tasks: 5 executed
+ubuntu@ubuntu:~/dragondance-master$ 
+```
+where you may have to adjust the path to where you downloaded ghidra to. You can now find the built extension in `dragondance-master/dist`
 
 #### The Features that I want to bring on it
 

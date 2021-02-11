@@ -14,6 +14,8 @@ public class Log {
 	final static int LOGGER_LOG_FILE =				1 << 9;
 	final static int LOGGER_LOG_STDOUT=				1 << 10;
 	
+	final static int LOGGER_ERROR = 				1 << 22;
+	final static int LOGGER_WARNING = 				1 << 23;
 	final static int LOGGER_INFO = 					1 << 24;
 	final static int LOGGER_DEBUG = 				1 << 25;
 	final static int LOGGER_VERBOSE = 				1 << 26;
@@ -53,11 +55,15 @@ public class Log {
 	}
 	
 	
-	private static void flagSetReset(final int v, boolean enabled) {
+	private static boolean flagSetReset(final int v, boolean enabled) {
+		boolean previous = (logFlag & v) == v;
+		
 		if (enabled)
 			logFlag |= v;
 		else
 			logFlag &= ~v;
+		
+		return previous;
 	}
 	
 	private static final boolean hasFlag(final int flag) {
@@ -88,24 +94,32 @@ public class Log {
 		flagSetReset(LOGGER_LOG_FILE,enabled);
 	}
 	
-	public static void enableStdoutLogging(boolean enabled) {
-		flagSetReset(LOGGER_LOG_STDOUT,enabled);
+	public static boolean enableStdoutLogging(boolean enabled) {
+		return flagSetReset(LOGGER_LOG_STDOUT,enabled);
 	}
 	
-	public static void enableInfo(boolean enable) {
-		flagSetReset(LOGGER_INFO,enable);
+	public static boolean enableError(boolean enable) {
+		return flagSetReset(LOGGER_ERROR,enable);
 	}
 	
-	public static void enableVerbose(boolean enable) {
-		flagSetReset(LOGGER_VERBOSE,enable);
+	public static boolean enableWarning(boolean enable) {
+		return flagSetReset(LOGGER_WARNING,enable);
 	}
 	
-	public static void enableDebug(boolean enable) {
-		flagSetReset(LOGGER_DEBUG,enable);
+	public static boolean enableInfo(boolean enable) {
+		return flagSetReset(LOGGER_INFO,enable);
 	}
 	
-	public static void print(String format, Object... args) {
-		String slog;
+	public static boolean enableVerbose(boolean enable) {
+		return flagSetReset(LOGGER_VERBOSE,enable);
+	}
+	
+	public static boolean enableDebug(boolean enable) {
+		return flagSetReset(LOGGER_DEBUG,enable);
+	}
+	
+	private static void print(String logType, String format, Object... args) {
+		String slog = "";
 		
 		
 		if (!hasFlag(LOGGER_ENABLED))
@@ -116,7 +130,12 @@ public class Log {
 				contains("64") ? "0x%016x" : "0x%08x";
 		format = format.replace("%p", pRepl);
 		
-		slog = String.format(format, args);
+		if (logType != null && !logType.isEmpty()) {
+			slog = "(" + logType + "): ";
+		}
+		
+		slog += String.format(format, args);
+		
 		
 		if (hasFlag(LOGGER_LOG_GHIDRA_CONSOLE))
 			DragonHelper.printConsole(slog);
@@ -133,16 +152,42 @@ public class Log {
 		
 	}
 	
-	public static void println(String format, Object... args) {
-		print(format + "\n",args);
+	public static void plain(String format, Object...args) {
+		print("",format,args);
 	}
 	
+	public static void println(String format, Object... args) {
+		print("",format + "\n",args);
+	}
+	
+	public static void println(String logType, String format, Object...args) {
+		print(logType,format + "\n",args);
+	}
+	
+	public static void error(String format, Object... args) {
+		
+		if (!hasFlag(LOGGER_ERROR))
+			return;
+		
+		println("Error",format,args);
+	}
+	
+
+	public static void warning(String format, Object... args) {
+		
+		if (!hasFlag(LOGGER_WARNING))
+			return;
+		
+		println("Warning",format,args);
+	}
+	
+
 	public static void info(String format, Object... args) {
 		
 		if (!hasFlag(LOGGER_INFO))
 			return;
 		
-		println(format,args);
+		println("Info",format,args);
 	}
 	
 	public static void verbose(String format, Object... args) {
@@ -150,7 +195,7 @@ public class Log {
 		if (!hasFlag(LOGGER_VERBOSE))
 			return;
 		
-		println(format,args);
+		println("Verbose",format,args);
 	}
 	
 	public static void debug(String format, Object... args) {
@@ -158,7 +203,7 @@ public class Log {
 		if (!hasFlag(LOGGER_DEBUG))
 			return;
 		
-		println(format,args);
+		println("Dbg",format,args);
 	}
 	
 	public static boolean isEnabled() {

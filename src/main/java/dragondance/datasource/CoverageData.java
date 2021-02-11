@@ -250,6 +250,8 @@ public class CoverageData implements AutoCloseable {
 			return;
 		}
 		
+		Log.info("rangeList: %d", this.rangeList.size());
+		
 		for (int i=0;i<this.rangeList.size();i++) {
 			for (int j=0;j<this.rangeList.size();j++) {
 				if (i != j) {
@@ -356,8 +358,13 @@ public class CoverageData implements AutoCloseable {
 		this.buildRanges();
 		
 		if (Globals.DumpInstructions) {
+			boolean pv,pd;
+			pv = Log.enableVerbose(true);
+			pd = Log.enableDebug(true);
 			this.dump();
 			this.dumpHashMap();
+			Log.enableVerbose(pv);
+			Log.enableDebug(pd);
 		}
 		
 		return true;
@@ -376,12 +383,12 @@ public class CoverageData implements AutoCloseable {
 		{
 			listValue = this.addressMap.get(key);
 			
-			Log.print("Key: %x | ",key);
-			Log.print("Value(s): ");
+			Log.debug("Key: %x | ",key);
+			Log.debug("Value(s): ");
 			
 			for (InstructionInfo ii : listValue) {
 				if (ii.getOwnerCodeRange().getContainerCoverage() == this) {
-					Log.print("%x (density: %d)," , ii.hashCode(), ii.getDensity());
+					Log.debug("%x (density: %d)," , ii.hashCode(), ii.getDensity());
 				}
 			}
 			

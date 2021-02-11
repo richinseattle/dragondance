@@ -3,11 +3,14 @@ package dragondance.eng;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.EventQueue;
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
+import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -22,8 +25,12 @@ import docking.widgets.filechooser.GhidraFileChooserMode;
 import dragondance.Globals;
 import dragondance.StringResources;
 import dragondance.exceptions.InvalidInstructionAddress;
+import dragondance.util.Util;
 import generic.concurrent.GThreadPool;
 import generic.jar.ResourceFile;
+import generic.json.JSONError;
+import generic.json.JSONParser;
+import generic.json.JSONToken;
 import ghidra.app.plugin.core.colorizer.ColorizingService;
 import ghidra.app.script.GhidraScript;
 import ghidra.app.script.GhidraScriptProvider;
@@ -217,13 +224,34 @@ public class DragonHelper {
 		
 	}
 	
-	public static void goToAddress(long addr) {
+	public static boolean isValidExecutableSectionAddress(long addr) {
+		if (addr < getImageBase().getOffset())
+			return false;
+		
+		if (addr >= getImageEnd().getOffset())
+			return false;
+		
+		return isCodeSectionAddress(addr);
+	}
+	
+	
+	public static boolean goToAddress(long addr) {
 		GoToService gotoService = tool.getService(GoToService.class);
 		
 		if (gotoService==null) 
-			return;
+			return false;
 		
-		gotoService.goTo(getAddress(addr));
+		if (!isValidExecutableSectionAddress(addr)) {
+			showWarning("%x is not valid offset.",addr);
+			return false;
+		}
+		
+
+		if (getInstructionNoThrow(getAddress(addr),true) == null) {
+			return false;
+		}
+		
+		return gotoService.goTo(getAddress(addr));
 	}
 	
 	public static Address getAddress(long addrValue) {
@@ -233,9 +261,12 @@ public class DragonHelper {
 	public static String askFile(Component parent, String title, String okButtonText) {
 		
 		GhidraFileChooser gfc = new GhidraFileChooser(parent);
-		File def = new File("D:\\Tools\\coveragetools\\pintool");
 		
-		gfc.setSelectedFile(def);
+		if (!Globals.LastFileDialogPath.isEmpty()) {
+			File def = new File(Globals.LastFileDialogPath);
+			gfc.setSelectedFile(def);
+		}
+		
 		gfc.setTitle(title);
 		gfc.setApproveButtonText(okButtonText);
 		gfc.setFileSelectionMode(GhidraFileChooserMode.FILES_ONLY);
@@ -248,6 +279,11 @@ public class DragonHelper {
 		
 		if (!file.exists())
 			return null;
+		
+		Globals.LastFileDialogPath =  Util.getDirectoryOfFile(file.getAbsolutePath());
+		
+		if (Globals.LastFileDialogPath == null)
+			Globals.LastFileDialogPath = System.getProperty("user.dir");
 		
 		return file.getAbsolutePath();
 	}
@@ -273,6 +309,10 @@ public class DragonHelper {
 			return getAddress(0x10000000);
 		
 		return fapi.getCurrentProgram().getImageBase();
+	}
+	
+	public static Address getImageEnd() {
+		return fapi.getCurrentProgram().getMaxAddress();
 	}
 	
 	public static InstructionContext getInstruction(long addr, boolean throwEx) throws InvalidInstructionAddress {
@@ -414,7 +454,7 @@ public class DragonHelper {
 		List<MemoryBlock> execBlocks = getExecutableMemoryBlocks();
 		
 		for (MemoryBlock mb : execBlocks) {
-			if (addr >= mb.getStart().getOffset() && addr <= mb.getEnd().getOffset()) {
+			if (addr >= mb.getStart().getOffset() && addr < mb.getEnd().getOffset()) {
 				status=true;
 				break;
 			}
@@ -512,5 +552,50 @@ public class DragonHelper {
 		colorService.clearBackgroundColor(ba, ba);
 		
 		return true;
+	}
+	
+	public static String getStringFromURL(String url) {
+		try {
+			URL u = new URL(url);
+			
+	        StringBuilder sb = new StringBuilder();
+	        BufferedReader reader = new BufferedReader(new InputStreamReader(u.openStream()));
+	            
+	        String nextLine = "";
+	        
+	        while ((nextLine = reader.readLine()) != null) {
+	        	sb.append(nextLine + "\n");
+	        }
+
+	        return sb.toString();
+			
+		} catch (IOException e) {
+			
+		} 
+		
+		return null;
+	}
+	
+	public static Object parseJson(String jsonData) {
+		char[] cbuf = new char[jsonData.length()];
+		Object obj = null;
+		JSONParser parser = new JSONParser();
+		List<JSONToken> tokens = new ArrayList<JSONToken>();
+		jsonData.getChars(0, jsonData.length(), cbuf, 0);
+		
+		if (parser.parse(cbuf, tokens) != JSONError.JSMN_SUCCESS) {
+			return null;
+		}
+		
+		try {
+			obj = parser.convert(cbuf, tokens);
+		}
+		catch (Exception ex) {
+			tokens.clear();
+			return null;
+		}
+		
+		tokens.clear();
+		return obj;
 	}
 }

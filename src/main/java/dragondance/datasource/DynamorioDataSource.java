@@ -4,6 +4,8 @@ import java.io.FileNotFoundException;
 import java.util.Arrays;
 import java.util.HashMap;
 
+import dragondance.Log;
+
 public class DynamorioDataSource extends CoverageDataSource {
 
 	private int drCovVersion;
@@ -21,21 +23,21 @@ public class DynamorioDataSource extends CoverageDataSource {
 		
 		while ((line = readLine()) != null) {
 			if (line.startsWith("DRCOV VERSION:")) {
-				parts = splitMultiDelim(line,": ");
+				parts = splitMultiDelim(line,": ",false);
 				this.drCovVersion = Integer.parseInt(parts[2]);
 			}
 			else if (line.startsWith("Module Table:")) {
-				parts = splitMultiDelim(line,": ,");
+				parts = splitMultiDelim(line,": ,",false);
 				this.moduleDefVersion = Integer.parseInt(parts[3]);
 				this.moduleCount = Integer.parseInt(parts[5]);
 			}
 			else if (line.startsWith("Columns:")) {
-				parts = splitMultiDelim(line,": ,");
+				parts = splitMultiDelim(line,": ,",false);
 				this.moduleInfoColumns = Arrays.copyOfRange(parts, 1, parts.length);
 				readModules();
 			}
 			else if (line.startsWith("BB Table:")) {
-				parts = splitMultiDelim(line," ");
+				parts = splitMultiDelim(line," ",false);
 				this.entryTableSize = Integer.parseInt(parts[2]);
 				readEntries();
 				break;
@@ -44,6 +46,7 @@ public class DynamorioDataSource extends CoverageDataSource {
 	}
 	
 	private void readModules() {
+		
 		HashMap<String,Integer> map =
 				new HashMap<String,Integer>();
 		
@@ -55,6 +58,9 @@ public class DynamorioDataSource extends CoverageDataSource {
 			switch (this.moduleInfoColumns[i]) {
 			case "id":
 				map.put("id",i);
+				break;
+			case "containing_id":
+				map.put("containing_id",i);
 				break;
 			case "base":
 			case "start":
@@ -70,19 +76,36 @@ public class DynamorioDataSource extends CoverageDataSource {
 			
 		}
 		
-		
+		final boolean hasCid = map.containsKey("containing_id");
 		String line;
 		int readModuleCount=0;
+		ModuleInfo mod=null;
 		
 		while ((line = readLine()) != null) {
-			String[] parts = splitMultiDelim(line,", ");
+			String[] parts = splitMultiDelim(line,",",true);
 			
-			ModuleInfo mod = ModuleInfo.make(
-					parts[map.get("id")], 
-					parts[map.get("base")], 
-					parts[map.get("end")], 
-					parts[map.get("path")]
-							);
+			if (hasCid) {
+				mod = ModuleInfo.make(
+						parts[map.get("id")],
+						parts[map.get("containing_id")],
+						parts[map.get("base")], 
+						parts[map.get("end")], 
+						parts[map.get("path")]
+								);
+			}
+			else {
+				mod = ModuleInfo.make(
+						parts[map.get("id")],
+						parts[map.get("base")], 
+						parts[map.get("end")], 
+						parts[map.get("path")]
+								);
+			}
+			
+			if (mod == null) {
+				Log.warning("module not parsed for: %s", line);
+				continue;
+			}
 			
 			this.pushModule(mod);
 			
